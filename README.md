@@ -35,6 +35,10 @@ This project sends a daily HTML workflow health report from n8n to Gmail. It pul
 - `register-report-task.ps1`: Registers the daily Windows scheduled task
 - `.env.example`: Template for required environment variables
 
+## Architecture
+
+- See [ARCHITECTURE.md](./ARCHITECTURE.md) for the workflow diagram and data flow.
+
 ## Setup
 
 1. Copy `.env.example` to `.env`
