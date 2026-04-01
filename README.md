@@ -7,9 +7,7 @@ This project sends a daily HTML workflow health report from n8n to Gmail. It pul
 - Runs daily at `08:35 AM` on Windows Task Scheduler
 - Sends the previous calendar day's data only
 - Example: a run on `April 2, 2026 at 08:35 AM` reports `April 1, 2026 00:00:00` to `April 1, 2026 23:59:59`
-- Sends to:
-  - `seshu@beforest.co`
-  - `harsha@beforest.co`
+- Sends to the recipients configured in `REPORT_TO`
 
 ## Email contents
 
