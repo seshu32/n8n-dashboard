@@ -1,0 +1,13 @@
+{
+  "name": "n8n-dashboard-email-report",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "report:send": "node send-n8n-report.mjs",
+    "task:register": "powershell -ExecutionPolicy Bypass -File .\\register-report-task.ps1"
+  },
+  "dependencies": {
+    "nodemailer": "^6.9.16"
+  }
+}
