@@ -4,6 +4,7 @@ import process from "node:process";
 import nodemailer from "nodemailer";
 
 const ENV_PATH = path.join(process.cwd(), ".env");
+const DASHBOARD_DATA_PATH = path.join(process.cwd(), "dashboard-data.js");
 
 loadEnvFile(ENV_PATH);
 
@@ -17,50 +18,57 @@ const config = {
   subjectPrefix: process.env.REPORT_SUBJECT_PREFIX || "N8N Workflow Health",
   timezone: process.env.REPORT_TIMEZONE || "Asia/Calcutta",
 };
+const shouldSendEmail = !isTruthy(process.env.REPORT_DISABLE_EMAIL);
 
 const now = new Date();
 const reportWindow = getPreviousDayWindow(now, config.timezone);
-const comparisonWindow = getPreviousDayWindow(
-  new Date(reportWindow.startTime.getTime()),
-  config.timezone
-);
+const trailingWindows = getTrailingDayWindows(reportWindow.startTime, config.timezone, 7);
+const comparisonWindow = trailingWindows[trailingWindows.length - 2];
+const currentWindow = trailingWindows[trailingWindows.length - 1];
 
 const workflows = await fetchAllPages("/api/v1/workflows", {
   active: "true",
   limit: "250",
 });
 
-const executions = await fetchExecutions(comparisonWindow.startTime);
+const executions = await fetchExecutions(trailingWindows[0].startTime);
 
 const report = buildReport({
   workflows,
   executions,
-  startTime: reportWindow.startTime,
-  endTime: reportWindow.endTime,
+  startTime: currentWindow.startTime,
+  endTime: currentWindow.endTime,
   previousStartTime: comparisonWindow.startTime,
   previousEndTime: comparisonWindow.endTime,
+  chartWindows: trailingWindows,
   timezone: config.timezone,
   baseUrl: config.n8nBaseUrl,
 });
 
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: config.gmailUser,
-    pass: config.gmailAppPassword,
-  },
-});
+writeDashboardDataFile(report);
 
-const subject = `${config.subjectPrefix} | ${formatSubjectDate(reportWindow.startTime, config.timezone)}`;
+if (shouldSendEmail) {
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      user: config.gmailUser,
+      pass: config.gmailAppPassword,
+    },
+  });
 
-await transporter.sendMail({
-  from: config.reportFrom,
-  to: config.reportTo,
-  subject,
-  html: renderEmailHtml(report, config.timezone),
-});
+  const subject = `${config.subjectPrefix} | ${formatSubjectDate(reportWindow.startTime, config.timezone)}`;
 
-console.log(`Report sent to ${config.reportTo}`);
+  await transporter.sendMail({
+    from: config.reportFrom,
+    to: config.reportTo,
+    subject,
+    html: renderEmailHtml(report, config.timezone),
+  });
+
+  console.log(`Report sent to ${config.reportTo}`);
+} else {
+  console.log(`Dashboard data updated without sending email: ${DASHBOARD_DATA_PATH}`);
+}
 
 function loadEnvFile(filePath) {
   if (!fs.existsSync(filePath)) {
@@ -101,6 +109,10 @@ function requiredEnv(name) {
     throw new Error(`Missing required environment variable: ${name}`);
   }
   return value;
+}
+
+function isTruthy(value) {
+  return ["1", "true", "yes", "on"].includes(String(value || "").toLowerCase());
 }
 
 function parsePositiveInt(value, fallback) {
@@ -212,7 +224,17 @@ function getNextCursor(payload) {
   return payload?.nextCursor || payload?.cursor?.next || payload?.meta?.nextCursor || null;
 }
 
-function buildReport({ workflows, executions, startTime, endTime, previousStartTime, previousEndTime, timezone, baseUrl }) {
+function buildReport({
+  workflows,
+  executions,
+  startTime,
+  endTime,
+  previousStartTime,
+  previousEndTime,
+  chartWindows,
+  timezone,
+  baseUrl,
+}) {
   const workflowMap = new Map();
   const activeWorkflowIds = new Set();
   const activeWorkflowCount = workflows.filter((workflow) => workflow.active !== false).length;
@@ -232,6 +254,10 @@ function buildReport({ workflows, executions, startTime, endTime, previousStartT
 
   const currentWindow = createBucket();
   const previousWindow = createBucket();
+  const trendBuckets = chartWindows.map((window) => ({
+    ...window,
+    bucket: createBucket(),
+  }));
 
   for (const execution of executions) {
     const timestamp = getExecutionTimestamp(execution);
@@ -244,10 +270,22 @@ function buildReport({ workflows, executions, startTime, endTime, previousStartT
     const workflow = getWorkflowRecord(workflowMap, workflowId, execution, baseUrl);
     const status = normalizeExecutionStatus(execution);
 
-    if (timestamp >= startTime && timestamp <= endTime && activeWorkflowIds.has(normalizedWorkflowId)) {
+    if (!activeWorkflowIds.has(normalizedWorkflowId)) {
+      continue;
+    }
+
+    if (timestamp >= startTime && timestamp <= endTime) {
       updateBucket(currentWindow, workflow, status);
-    } else if (timestamp >= previousStartTime && timestamp <= previousEndTime && activeWorkflowIds.has(normalizedWorkflowId)) {
+    } else if (timestamp >= previousStartTime && timestamp <= previousEndTime) {
       updateBucket(previousWindow, workflow, status);
+    }
+
+    const trendBucket = trendBuckets.find(
+      (window) => timestamp >= window.startTime && timestamp <= window.endTime
+    );
+
+    if (trendBucket) {
+      updateBucket(trendBucket.bucket, workflow, status);
     }
   }
 
@@ -290,8 +328,16 @@ function buildReport({ workflows, executions, startTime, endTime, previousStartT
     summary,
     rows,
     topFailures,
+    trend: trendBuckets.map((entry) => ({
+      label: entry.label,
+      totalExecutions: entry.bucket.totalExecutions,
+      failedExecutions: entry.bucket.failedExecutions,
+      successfulExecutions: entry.bucket.successfulExecutions,
+      workflowsRan: entry.bucket.workflowsRan,
+    })),
     reportDateLabel: formatDate(startTime, timezone),
     windowLabel: `${formatDateTime(startTime, timezone)} to ${formatDateTime(endTime, timezone)}`,
+    generatedAt: new Date().toISOString(),
   };
 }
 
@@ -354,6 +400,21 @@ function buildSummary(currentWindow, previousWindow) {
       successRate: currentSuccessRate - previousSuccessRate,
     },
   };
+}
+
+function writeDashboardDataFile(report) {
+  const payload = {
+    generatedAt: report.generatedAt,
+    reportDateLabel: report.reportDateLabel,
+    windowLabel: report.windowLabel,
+    summary: report.summary,
+    topFailures: report.topFailures,
+    rows: report.rows,
+    trend: report.trend,
+  };
+
+  const content = `window.__DASHBOARD_DATA__ = ${JSON.stringify(payload, null, 2)};\n`;
+  fs.writeFileSync(DASHBOARD_DATA_PATH, content, "utf8");
 }
 
 function getWorkflowRecord(workflowMap, workflowId, execution, baseUrl) {
@@ -583,6 +644,27 @@ function getPreviousDayWindow(referenceDate, timezone) {
     startTime: zonedDateTimeToUtc(timezone, previousDayYear, previousDayMonth, previousDayDate, 0, 0, 0, 0),
     endTime: zonedDateTimeToUtc(timezone, previousDayYear, previousDayMonth, previousDayDate, 23, 59, 59, 999),
   };
+}
+
+function getTrailingDayWindows(referenceStartTime, timezone, numberOfDays) {
+  const windows = [];
+
+  for (let offset = numberOfDays - 1; offset >= 0; offset -= 1) {
+    const startTime = new Date(referenceStartTime.getTime() - offset * 24 * 60 * 60 * 1000);
+    const parts = getZonedDateParts(startTime, timezone);
+
+    windows.push({
+      startTime: zonedDateTimeToUtc(timezone, parts.year, parts.month, parts.day, 0, 0, 0, 0),
+      endTime: zonedDateTimeToUtc(timezone, parts.year, parts.month, parts.day, 23, 59, 59, 999),
+      label: new Intl.DateTimeFormat("en-IN", {
+        timeZone: timezone,
+        month: "short",
+        day: "2-digit",
+      }).format(startTime),
+    });
+  }
+
+  return windows;
 }
 
 function getZonedDateParts(date, timezone) {

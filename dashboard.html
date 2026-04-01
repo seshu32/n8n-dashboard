@@ -17,6 +17,7 @@
       --red: #f35e56;
       --red-bar: #9e2d30;
       --blue: #7d9bff;
+      --amber: #f7c96f;
     }
 
     * {
@@ -59,18 +60,41 @@
 
     .topbar {
       display: flex;
-      justify-content: center;
-      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-end;
       margin-bottom: 18px;
+      flex-wrap: wrap;
     }
 
     h1 {
       margin: 0;
-      text-align: center;
       font-size: 42px;
       line-height: 1.1;
       letter-spacing: -0.03em;
       font-weight: 800;
+    }
+
+    .headline-copy {
+      max-width: 760px;
+    }
+
+    .headline-meta {
+      margin-top: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .meta-pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 7px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.03);
     }
 
     .cards {
@@ -108,6 +132,13 @@
       color: #f3f4fa;
     }
 
+    .metric-subtitle {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: -3px;
+      margin-bottom: 11px;
+    }
+
     .delta {
       display: flex;
       align-items: center;
@@ -132,6 +163,11 @@
       color: var(--red);
     }
 
+    .delta.neutral strong,
+    .delta.neutral .arrow {
+      color: var(--amber);
+    }
+
     .arrow {
       font-size: 14px;
       transform: translateY(-1px);
@@ -152,9 +188,11 @@
       color: #f2f2f7;
     }
 
-    .chart-panel {
+    .chart-panel,
+    .failure-panel,
+    .bottom-panel,
+    .empty-state {
       padding: 12px 14px 10px;
-      min-height: 258px;
     }
 
     .chart-wrap svg {
@@ -186,15 +224,14 @@
       box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
     }
 
-    .failure-panel {
-      padding: 12px 14px 10px;
-      min-height: 258px;
-    }
-
-    .mini-table {
+    .mini-table,
+    .data-table {
       width: 100%;
       border-collapse: collapse;
       table-layout: fixed;
+    }
+
+    .mini-table {
       font-size: 13px;
       color: #e9e9ef;
     }
@@ -207,7 +244,8 @@
       text-align: left;
     }
 
-    .mini-table tbody tr {
+    .mini-table tbody tr,
+    .data-table tbody tr {
       border-top: 1px solid rgba(255, 255, 255, 0.06);
     }
 
@@ -223,9 +261,10 @@
     }
 
     .workflow-name {
-      line-height: 1.15;
+      line-height: 1.2;
       color: #d8d9e6;
       padding-right: 8px;
+      word-break: break-word;
     }
 
     .bar-track {
@@ -254,10 +293,6 @@
       font-weight: 700;
     }
 
-    .bottom-panel {
-      padding: 12px 12px 8px;
-    }
-
     .bottom-title {
       margin: 0 0 12px;
       padding-left: 2px;
@@ -267,9 +302,6 @@
     }
 
     .data-table {
-      width: 100%;
-      border-collapse: collapse;
-      table-layout: fixed;
       font-size: 15px;
     }
 
@@ -324,6 +356,12 @@
       text-decoration: underline;
     }
 
+    .empty-state {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
     @media (max-width: 980px) {
       .cards,
       .mid-grid {
@@ -365,140 +403,18 @@
 <body>
   <main class="dashboard">
     <section class="topbar">
-      <h1>N8n Workflow Health Dashboard</h1>
+      <div class="headline-copy">
+        <h1>N8n Workflow Health Dashboard</h1>
+        <div class="headline-meta" id="headline-meta"></div>
+      </div>
     </section>
 
-    <section class="cards">
-      <article class="panel metric">
-        <div class="metric-title">Workflows Ran</div>
-        <div class="metric-value">16</div>
-        <div class="delta positive">
-          <span class="arrow">&#8599;</span>
-          <strong>+14.3%</strong>
-          <span>vs yesterday</span>
-        </div>
-      </article>
-
-      <article class="panel metric">
-        <div class="metric-title">Total Executions</div>
-        <div class="metric-value">207</div>
-        <div class="delta positive">
-          <span class="arrow">&#8599;</span>
-          <strong>+18.7%</strong>
-          <span>vs yesterday</span>
-        </div>
-      </article>
-
-      <article class="panel metric">
-        <div class="metric-title">Failed Executions</div>
-        <div class="metric-value">7</div>
-        <div class="delta negative">
-          <span class="arrow">&#8599;</span>
-          <strong>-22.2%</strong>
-          <span>vs yesterday</span>
-        </div>
-      </article>
-
-      <article class="panel metric">
-        <div class="metric-title">Success Rate</div>
-        <div class="metric-value">96.62%</div>
-        <div class="delta positive">
-          <span class="arrow">&#8599;</span>
-          <strong>+1.1%</strong>
-          <span>vs yesterday</span>
-        </div>
-      </article>
-    </section>
+    <section class="cards" id="metric-cards"></section>
 
     <section class="mid-grid">
       <article class="panel chart-panel">
         <h2 class="panel-title">Executions Over Time</h2>
-        <div class="chart-wrap">
-          <svg viewBox="0 0 660 208" role="img" aria-label="Executions chart">
-            <defs>
-              <filter id="softGlow">
-                <feGaussianBlur stdDeviation="2.2" result="blur"></feGaussianBlur>
-                <feMerge>
-                  <feMergeNode in="blur"></feMergeNode>
-                  <feMergeNode in="SourceGraphic"></feMergeNode>
-                </feMerge>
-              </filter>
-            </defs>
-
-            <g font-size="12" fill="#aeafbc" font-family="Inter, Segoe UI, sans-serif">
-              <text x="4" y="34">250</text>
-              <text x="6" y="79">150</text>
-              <text x="6" y="124">150</text>
-              <text x="12" y="170">10</text>
-            </g>
-
-            <g stroke="var(--grid)" stroke-width="1">
-              <line x1="34" y1="24" x2="640" y2="24"></line>
-              <line x1="34" y1="69" x2="640" y2="69"></line>
-              <line x1="34" y1="114" x2="640" y2="114"></line>
-              <line x1="34" y1="159" x2="640" y2="159"></line>
-            </g>
-
-            <g stroke="rgba(255,255,255,0.08)" stroke-width="1">
-              <line x1="34" y1="160" x2="640" y2="160"></line>
-            </g>
-
-            <g font-size="12" fill="#aeafbc" font-family="Inter, Segoe UI, sans-serif">
-              <text x="18" y="186">Mar 24</text>
-              <text x="84" y="186">Mar 26</text>
-              <text x="152" y="186">Mar 37</text>
-              <text x="220" y="186">Mar 27</text>
-              <text x="288" y="186">Mar 29</text>
-              <text x="356" y="186">Mar 330</text>
-              <text x="426" y="186">Mar 311</text>
-              <text x="494" y="186">Mar 340</text>
-              <text x="562" y="186">Mar 330</text>
-            </g>
-
-            <polyline
-              fill="none"
-              stroke="#6fd08c"
-              stroke-width="2.2"
-              points="38,46 72,48 106,43 140,38 174,31 208,24 242,20 280,22 316,22 350,22 386,22 422,22"
-              filter="url(#softGlow)"></polyline>
-
-            <polyline
-              fill="none"
-              stroke="#f15c52"
-              stroke-width="2.2"
-              points="38,146 72,142 106,139 140,135 174,128 208,121 242,114 278,108 314,102 350,95"
-              filter="url(#softGlow)"></polyline>
-
-            <g fill="#6fd08c">
-              <circle cx="38" cy="46" r="3"></circle>
-              <circle cx="72" cy="48" r="3"></circle>
-              <circle cx="106" cy="43" r="3"></circle>
-              <circle cx="140" cy="38" r="3"></circle>
-              <circle cx="174" cy="31" r="3"></circle>
-              <circle cx="208" cy="24" r="3"></circle>
-              <circle cx="242" cy="20" r="3"></circle>
-              <circle cx="280" cy="22" r="3"></circle>
-              <circle cx="316" cy="22" r="3"></circle>
-              <circle cx="350" cy="22" r="3"></circle>
-              <circle cx="386" cy="22" r="3"></circle>
-              <circle cx="422" cy="22" r="3"></circle>
-            </g>
-
-            <g fill="#f15c52">
-              <circle cx="38" cy="146" r="3"></circle>
-              <circle cx="72" cy="142" r="3"></circle>
-              <circle cx="106" cy="139" r="3"></circle>
-              <circle cx="140" cy="135" r="3"></circle>
-              <circle cx="174" cy="128" r="3"></circle>
-              <circle cx="208" cy="121" r="3"></circle>
-              <circle cx="242" cy="114" r="3"></circle>
-              <circle cx="278" cy="108" r="3"></circle>
-              <circle cx="314" cy="102" r="3"></circle>
-              <circle cx="350" cy="95" r="3"></circle>
-            </g>
-
-          </svg>
-        </div>
+        <div class="chart-wrap" id="chart-wrap"></div>
         <div class="legend">
           <span class="legend-item"><span class="legend-dot" style="background:#6fd08c"></span>Successful</span>
           <span class="legend-item"><span class="legend-dot" style="background:#f15c52"></span>Failed</span>
@@ -507,6 +423,197 @@
 
       <article class="panel failure-panel">
         <h2 class="panel-title">Failures by Workflow</h2>
+        <div id="failure-table"></div>
+      </article>
+    </section>
+
+    <section class="panel bottom-panel">
+      <h2 class="bottom-title">Active Workflows</h2>
+      <div id="workflow-table"></div>
+    </section>
+  </main>
+
+  <script src="./dashboard-data.js"></script>
+  <script>
+    const dashboardData = window.__DASHBOARD_DATA__ || null;
+
+    if (!dashboardData) {
+      renderMissingDataState();
+    } else {
+      renderDashboard(dashboardData);
+    }
+
+    function renderDashboard(data) {
+      renderHeadlineMeta(data);
+      renderMetricCards(data);
+      renderTrendChart(data.trend || []);
+      renderFailureTable(data.topFailures || []);
+      renderWorkflowTable(data.rows || []);
+    }
+
+    function renderHeadlineMeta(data) {
+      const generatedAt = data.generatedAt ? new Date(data.generatedAt) : null;
+      const generatedLabel = generatedAt && !Number.isNaN(generatedAt.getTime())
+        ? generatedAt.toLocaleString("en-IN", {
+            year: "numeric",
+            month: "short",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          })
+        : "Not generated yet";
+
+      document.getElementById("headline-meta").innerHTML = [
+        createMetaPill(`Report Day: ${escapeHtml(data.reportDateLabel || "N/A")}`),
+        createMetaPill(`Window: ${escapeHtml(data.windowLabel || "N/A")}`),
+        createMetaPill(`Active Workflows: ${formatInteger(data.summary?.activeWorkflows || 0)}`),
+        createMetaPill(`Updated: ${escapeHtml(generatedLabel)}`),
+      ].join("");
+    }
+
+    function renderMetricCards(data) {
+      const summary = data.summary || {};
+      const cards = [
+        {
+          title: "Workflows Ran",
+          value: formatInteger(summary.workflowsRan || 0),
+          subtitle: `${formatInteger(summary.activeWorkflows || 0)} active workflows in n8n`,
+          delta: renderDelta(summary.deltas?.workflowsRan || 0, false, "vs previous day"),
+        },
+        {
+          title: "Total Executions",
+          value: formatInteger(summary.totalExecutions || 0),
+          delta: renderDelta(summary.deltas?.totalExecutions || 0, false, "vs previous day"),
+        },
+        {
+          title: "Failed Executions",
+          value: formatInteger(summary.failedExecutions || 0),
+          delta: renderDelta(summary.deltas?.failedExecutions || 0, true, "vs previous day"),
+        },
+        {
+          title: "Success Rate",
+          value: formatPercent(summary.successRate || 0),
+          delta: renderDelta(summary.deltas?.successRate || 0, false, "pts vs previous day", true),
+        },
+      ];
+
+      document.getElementById("metric-cards").innerHTML = cards
+        .map((card) => `
+          <article class="panel metric">
+            <div class="metric-title">${escapeHtml(card.title)}</div>
+            <div class="metric-value">${escapeHtml(card.value)}</div>
+            ${card.subtitle ? `<div class="metric-subtitle">${escapeHtml(card.subtitle)}</div>` : ""}
+            ${card.delta}
+          </article>
+        `)
+        .join("");
+    }
+
+    function renderTrendChart(trend) {
+      const target = document.getElementById("chart-wrap");
+      if (!trend.length) {
+        target.innerHTML = `<div class="empty-state">No execution history is available for the chart yet.</div>`;
+        return;
+      }
+
+      const width = 660;
+      const height = 208;
+      const left = 36;
+      const right = 20;
+      const top = 24;
+      const bottom = 48;
+      const chartWidth = width - left - right;
+      const chartHeight = height - top - bottom;
+      const maxValue = Math.max(
+        5,
+        ...trend.map((point) => Math.max(point.successfulExecutions || 0, point.failedExecutions || 0))
+      );
+      const yAxisMax = roundUpMax(maxValue);
+      const gridTicks = [yAxisMax, Math.round(yAxisMax * 0.67), Math.round(yAxisMax * 0.33), 0];
+      const xStep = trend.length > 1 ? chartWidth / (trend.length - 1) : 0;
+
+      const greenPoints = trend.map((point, index) => {
+        return toPoint(
+          left + index * xStep,
+          top + chartHeight - ((point.successfulExecutions || 0) / yAxisMax) * chartHeight
+        );
+      });
+
+      const redPoints = trend.map((point, index) => {
+        return toPoint(
+          left + index * xStep,
+          top + chartHeight - ((point.failedExecutions || 0) / yAxisMax) * chartHeight
+        );
+      });
+
+      const labelY = top + chartHeight + 26;
+
+      target.innerHTML = `
+        <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Executions chart">
+          <defs>
+            <filter id="softGlow">
+              <feGaussianBlur stdDeviation="2.2" result="blur"></feGaussianBlur>
+              <feMerge>
+                <feMergeNode in="blur"></feMergeNode>
+                <feMergeNode in="SourceGraphic"></feMergeNode>
+              </feMerge>
+            </filter>
+          </defs>
+
+          <g font-size="12" fill="#aeafbc" font-family="Inter, Segoe UI, sans-serif">
+            ${gridTicks.map((tick, index) => {
+              const y = top + (chartHeight / (gridTicks.length - 1)) * index + 4;
+              return `<text x="4" y="${y}">${formatInteger(tick)}</text>`;
+            }).join("")}
+          </g>
+
+          <g stroke="var(--grid)" stroke-width="1">
+            ${gridTicks.map((_, index) => {
+              const y = top + (chartHeight / (gridTicks.length - 1)) * index;
+              return `<line x1="${left}" y1="${y}" x2="${width - right}" y2="${y}"></line>`;
+            }).join("")}
+          </g>
+
+          <g stroke="rgba(255,255,255,0.08)" stroke-width="1">
+            <line x1="${left}" y1="${top + chartHeight}" x2="${width - right}" y2="${top + chartHeight}"></line>
+          </g>
+
+          <g font-size="12" fill="#aeafbc" font-family="Inter, Segoe UI, sans-serif">
+            ${trend.map((point, index) => {
+              const x = left + index * xStep - 18;
+              return `<text x="${x}" y="${labelY}">${escapeHtml(point.label || "")}</text>`;
+            }).join("")}
+          </g>
+
+          <polyline fill="none" stroke="#6fd08c" stroke-width="2.2" points="${greenPoints.join(" ")}" filter="url(#softGlow)"></polyline>
+          <polyline fill="none" stroke="#f15c52" stroke-width="2.2" points="${redPoints.join(" ")}" filter="url(#softGlow)"></polyline>
+
+          <g fill="#6fd08c">
+            ${greenPoints.map((point) => {
+              const [x, y] = point.split(",");
+              return `<circle cx="${x}" cy="${y}" r="3"></circle>`;
+            }).join("")}
+          </g>
+
+          <g fill="#f15c52">
+            ${redPoints.map((point) => {
+              const [x, y] = point.split(",");
+              return `<circle cx="${x}" cy="${y}" r="3"></circle>`;
+            }).join("")}
+          </g>
+        </svg>
+      `;
+    }
+
+    function renderFailureTable(rows) {
+      const target = document.getElementById("failure-table");
+      if (!rows.length) {
+        target.innerHTML = `<div class="empty-state">No failed workflow executions were recorded in this reporting window.</div>`;
+        return;
+      }
+
+      target.innerHTML = `
         <table class="mini-table">
           <colgroup>
             <col style="width:40%">
@@ -525,143 +632,136 @@
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td class="workflow-name">10% Typeform to<br>Zoom Registration Ac...</td>
-              <td class="num">6</td>
-              <td class="num">2</td>
-              <td class="num">4</td>
-              <td>
-                <div class="bar-track">
-                  <div class="bar-fill" style="width:31px;"></div>
-                  <span class="bar-value">33.33%</span>
-                </div>
-              </td>
-            </tr>
-            <tr>
-              <td class="workflow-name">Calendly&gt;&gt;WA-flow<br>Webinar Reminders...</td>
-              <td class="num">2</td>
-              <td class="num">2</td>
-              <td class="num">0</td>
-              <td>
-                <div class="bar-track">
-                  <div class="bar-fill" style="width:92px;"></div>
-                  <span class="bar-value">100%</span>
-                </div>
-              </td>
-            </tr>
-            <tr>
-              <td class="workflow-name">Website Uptime<br>Monitor</td>
-              <td class="num">24</td>
-              <td class="num">1</td>
-              <td class="num">23</td>
-              <td>
-                <div class="bar-track">
-                  <div class="bar-fill" style="width:8px;"></div>
-                  <span class="bar-value">4.17%</span>
-                </div>
-              </td>
-            </tr>
-            <tr>
-              <td class="workflow-name">Deal Summary -<br>Ownerwise</td>
-              <td class="num">20</td>
-              <td class="num">1</td>
-              <td class="num">19</td>
-              <td>
-                <div class="bar-track">
-                  <div class="bar-fill" style="width:9px;"></div>
-                  <span class="bar-value">5%</span>
-                </div>
-              </td>
-            </tr>
-            <tr>
-              <td class="workflow-name">1-on-1 Flow Synthlovs...</td>
-              <td class="num">17</td>
-              <td class="num">1</td>
-              <td class="num">16</td>
-              <td>
-                <div class="bar-track">
-                  <div class="bar-fill" style="width:10px;"></div>
-                  <span class="bar-value">5.88%</span>
-                </div>
-              </td>
-            </tr>
+            ${rows.map((row) => `
+              <tr>
+                <td class="workflow-name">${escapeHtml(row.name)}</td>
+                <td class="num">${formatInteger(row.runs)}</td>
+                <td class="num">${formatInteger(row.failed)}</td>
+                <td class="num">${formatInteger(row.success)}</td>
+                <td>
+                  <div class="bar-track">
+                    <div class="bar-fill" style="width:${Math.max(6, Math.min(92, (Number(row.failureRate) / 100) * 92))}px;"></div>
+                    <span class="bar-value">${escapeHtml(formatPercent(row.failureRate))}</span>
+                  </div>
+                </td>
+              </tr>
+            `).join("")}
           </tbody>
         </table>
-      </article>
-    </section>
+      `;
+    }
 
-    <section class="panel bottom-panel">
-      <h2 class="bottom-title">Active Workflows</h2>
-      <table class="data-table">
-        <colgroup>
-          <col style="width:50%">
-          <col style="width:9%">
-          <col style="width:9%">
-          <col style="width:11%">
-          <col style="width:12%">
-          <col style="width:8%">
-          <col style="width:6%">
-        </colgroup>
-        <thead>
-          <tr>
-            <th>Workflow</th>
-            <th class="num">Runs</th>
-            <th class="num">Failed</th>
-            <th class="num">Success</th>
-            <th class="num">Success Rate</th>
-            <th class="num" style="text-align:center;">Status</th>
-            <th class="num" style="text-align:left;">Link</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>10% Typeform to Zoom Registration &amp; Interakt Ack</td>
-            <td class="num">6</td>
-            <td class="num">2</td>
-            <td class="num">4</td>
-            <td class="rate">66.67%</td>
-            <td class="num" style="text-align:center;"><span class="status">Active</span></td>
-            <td class="num" style="text-align:left;"><a class="open-link" href="#">Open</a></td>
-          </tr>
-          <tr>
-            <td>Calendly-&gt;WA-flow Webinar Reminders</td>
-            <td class="num">2</td>
-            <td class="num">2</td>
-            <td class="num">0</td>
-            <td class="rate">0.00%</td>
-            <td class="num" style="text-align:center;"><span class="status">Active</span></td>
-            <td class="num" style="text-align:left;"><a class="open-link" href="#">Open</a></td>
-          </tr>
-          <tr>
-            <td>Website Uptime Monitor</td>
-            <td class="num">24</td>
-            <td class="num">1</td>
-            <td class="num">23</td>
-            <td class="rate">95.83%</td>
-            <td class="num" style="text-align:center;"><span class="status">Active</span></td>
-            <td class="num" style="text-align:left;"><a class="open-link" href="#">Open</a></td>
-          </tr>
-          <tr>
-            <td>Deal Summary - Ownerwise</td>
-            <td class="num">20</td>
-            <td class="num">1</td>
-            <td class="num">19</td>
-            <td class="rate">95.00%</td>
-            <td class="num" style="text-align:center;"><span class="status">Active</span></td>
-            <td class="num" style="text-align:left;"><a class="open-link" href="#">Open</a></td>
-          </tr>
-          <tr>
-            <td>1-on-1 Flow Synthesise &amp; Message</td>
-            <td class="num">17</td>
-            <td class="num">1</td>
-            <td class="num">16</td>
-            <td class="rate">94.12%</td>
-            <td class="num" style="text-align:center;"><span class="status">Active</span></td>
-            <td class="num" style="text-align:left;"><a class="open-link" href="#">Open</a></td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
-  </main>
+    function renderWorkflowTable(rows) {
+      const target = document.getElementById("workflow-table");
+      if (!rows.length) {
+        target.innerHTML = `<div class="empty-state">No active workflow data is available yet.</div>`;
+        return;
+      }
+
+      target.innerHTML = `
+        <table class="data-table">
+          <colgroup>
+            <col style="width:50%">
+            <col style="width:9%">
+            <col style="width:9%">
+            <col style="width:11%">
+            <col style="width:12%">
+            <col style="width:8%">
+            <col style="width:6%">
+          </colgroup>
+          <thead>
+            <tr>
+              <th>Workflow</th>
+              <th class="num">Runs</th>
+              <th class="num">Failed</th>
+              <th class="num">Success</th>
+              <th class="num">Success Rate</th>
+              <th class="num" style="text-align:center;">Status</th>
+              <th class="num" style="text-align:left;">Link</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map((row) => `
+              <tr>
+                <td>${escapeHtml(row.name)}</td>
+                <td class="num">${formatInteger(row.runs)}</td>
+                <td class="num">${formatInteger(row.failed)}</td>
+                <td class="num">${formatInteger(row.success)}</td>
+                <td class="rate">${escapeHtml(formatPercent(row.successRate))}</td>
+                <td class="num" style="text-align:center;"><span class="status">Active</span></td>
+                <td class="num" style="text-align:left;"><a class="open-link" href="${escapeHtml(row.link)}" target="_blank" rel="noreferrer">Open</a></td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      `;
+    }
+
+    function renderMissingDataState() {
+      document.getElementById("headline-meta").innerHTML = createMetaPill("Dashboard data has not been generated yet");
+      document.getElementById("metric-cards").innerHTML = `
+        <article class="panel empty-state">
+          Run <code>node .\\send-n8n-report.mjs</code> once to generate <code>dashboard-data.js</code> from your n8n data.
+        </article>
+      `;
+      document.getElementById("chart-wrap").innerHTML = `<div class="empty-state">No dashboard snapshot found.</div>`;
+      document.getElementById("failure-table").innerHTML = `<div class="empty-state">No dashboard snapshot found.</div>`;
+      document.getElementById("workflow-table").innerHTML = `<div class="empty-state">No dashboard snapshot found.</div>`;
+    }
+
+    function renderDelta(rawValue, invertMeaning, suffix, percentagePoints) {
+      const value = Number(rawValue || 0);
+      const neutral = Math.abs(value) < 0.005;
+      const positive = invertMeaning ? value <= 0 : value >= 0;
+      const tone = neutral ? "neutral" : positive ? "positive" : "negative";
+      const arrow = neutral ? "&#8594;" : positive ? "&#8599;" : "&#8600;";
+      const sign = value > 0 ? "+" : "";
+      const formattedValue = percentagePoints
+        ? `${sign}${value.toFixed(2)}`
+        : `${sign}${formatInteger(value)}`;
+
+      return `
+        <div class="delta ${tone}">
+          <span class="arrow">${arrow}</span>
+          <strong>${escapeHtml(formattedValue)}</strong>
+          <span>${escapeHtml(suffix)}</span>
+        </div>
+      `;
+    }
+
+    function createMetaPill(text) {
+      return `<span class="meta-pill">${escapeHtml(text)}</span>`;
+    }
+
+    function toPoint(x, y) {
+      return `${Number(x).toFixed(1)},${Number(y).toFixed(1)}`;
+    }
+
+    function roundUpMax(value) {
+      if (value <= 10) {
+        return 10;
+      }
+
+      const magnitude = Math.pow(10, Math.floor(Math.log10(value)));
+      return Math.ceil(value / magnitude) * magnitude;
+    }
+
+    function formatPercent(value) {
+      return `${Number(value || 0).toFixed(2)}%`;
+    }
+
+    function formatInteger(value) {
+      return Number(value || 0).toLocaleString("en-IN");
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+  </script>
 </body>
 </html>
